@@ -85,7 +85,7 @@ def get_live_list(update, context):
         return None, None
     doc = DB.collection("live").document(str(update.message.chat_id)).get()
     if doc.exists is False or len(doc.to_dict()) == 0:
-        update.message.reply_text("No entires has been logged today!")
+        update.message.reply_text("No entries has yet been logged today!")
         return None, None
     offset = timedelta(hours=meta["timezone"])
     entries = sorted(
