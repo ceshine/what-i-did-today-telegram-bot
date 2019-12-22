@@ -1,6 +1,6 @@
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from telegram.ext import (
     Updater, CommandHandler, MessageHandler, Filters,
@@ -58,6 +58,52 @@ def journal_confirm(update, context):
         update.message.reply_text("Canceled!")
     del context.chat_data["pending"]
     return ConversationHandler.END
+
+
+def load_meta(chat_id, user_data):
+    if "timezone" not in user_data or "end_of_day" not in user_data:
+        doc = DB.collection("meta").document(str(chat_id)).get()
+        if doc.exists is False:
+            return None
+        metadata = doc.to_dict()
+        if "timezone" not in metadata or "end_of_day" not in metadata:
+            return None
+        user_data["timezone"] = metadata["timezone"]
+        user_data["end_of_day"] = metadata["end_of_day"]
+    return {
+        "timezone": user_data["timezone"],
+        "end_of_day": user_data["end_of_day"],
+    }
+
+
+def list_current(update, context) -> None:
+    meta = load_meta(update.message.chat_id, context.user_data)
+    if meta is None:
+        update.message.reply_text("You need to run /config command first!")
+        return
+    doc = DB.collection("live").document(str(update.message.chat_id)).get()
+    if doc.exists is False or len(doc.to_dict()) == 0:
+        update.message.reply_text("No entires has been logged today!")
+        return
+    offset = timedelta(hours=meta["timezone"])
+    entries = sorted(
+        [
+            (
+                datetime.utcfromtimestamp(
+                    int(key)
+                ) + offset,
+                item
+            )
+            for key, item in doc.to_dict().items()],
+        key=lambda x: x[0]
+    )
+    formatted = [
+        f"{i + 1}. {key.strftime('%m/%d %H:%M:%S')} — {item[:30]}"
+        for i, (key, item) in enumerate(entries)
+    ]
+    update.message.reply_text(
+        "(Truncated) Entries so far:\n" + "\n".join(formatted)
+    )
 
 
 def error(update, context):
@@ -147,7 +193,7 @@ def main():
         fallbacks=[]
     ))
 
-    # on noncommand i.e message - echo the message on Telegram
+    # on noncommand i.e message - echo the messgage on Telegram
     dp.add_handler(ConversationHandler(
         entry_points=[MessageHandler(
             Filters.text, journal, pass_chat_data=True)],
@@ -160,6 +206,8 @@ def main():
         },
         fallbacks=[]
     ))
+
+    dp.add_handler(CommandHandler('current', list_current))
 
     # log all errors
     dp.add_error_handler(error)
