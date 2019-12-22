@@ -8,6 +8,9 @@ from telegram.ext import (
 )
 from google.cloud import firestore
 
+from db import DB
+from reporting import check_and_make_report
+
 TIMEZONE, END_OF_DAY = range(2)
 CONFIRM, SELECT, EDIT = range(3)
 
@@ -18,8 +21,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 LOGGER = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "keyfile.json"
-DB = firestore.Client()
+
 
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
@@ -99,7 +101,7 @@ def get_live_list(update, context):
         key=lambda x: x[0]
     )
     formatted = [
-        f"{i + 1}. {timestamp.strftime('%m/%d %H:%M:%S')} — {item[:30]}"
+        f"{i + 1}. {timestamp.strftime('%H:%M:%S')} — {item[:30]}"
         for i, (timestamp, _, item) in enumerate(entries)
     ]
     return entries, formatted
@@ -262,12 +264,21 @@ def done(update, context):
     return ConversationHandler.END
 
 
+def _get_nearest_start(minute=10):
+    now = datetime.now()
+    if now.minute < minute:
+        return now.replace(minute=minute, second=0)
+    return (now.replace(minute=minute, second=0) +
+            datetime.timedelta(hours=1))
+
+
 def main():
     """Start the bot."""
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
     updater = Updater(BOT_TOKEN, use_context=True)
+    job_queue = updater.job_queue
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
@@ -335,6 +346,13 @@ def main():
 
     # Start the Bot
     updater.start_polling()
+
+    # job_queue.run_repeating(
+    #     check_and_make_report, interval=3600, first=_get_nearest_start()
+    # )
+    job_queue.run_repeating(
+        check_and_make_report, interval=3600, first=5
+    )
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
