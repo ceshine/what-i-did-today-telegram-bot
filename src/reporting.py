@@ -37,14 +37,16 @@ def _send_email(recipient: str, user_time: datetime, entries: List, message: str
         f"https://api.mailgun.net/v3/{MAILGUN_DOMAIN}/messages",
         auth=("api", MAILGUN_API_KEY),
         data={
-            "from": f"What I Did Today <mailgun@{MAILGUN_DOMAIN}>",
+            "from": f"What I Did Today <bot@{MAILGUN_DOMAIN}>",
             "to": [recipient],
             "subject": f"{user_time.strftime('%Y%m%d')} — Congratulation on Another Awesome Day!",
             "text": message,
             "html": output
         }
     )
-    LOGGER.info(recipient, res.status_code)
+    LOGGER.info("%s %d" % (recipient, res.status_code))
+    if res.status_code != 200:
+        LOGGER.error(res.text)
 
 
 def get_all_metadata():
@@ -68,7 +70,10 @@ def _archive_journal(user_time, chat_id, archive):
             merge=True
         )
         DB.collection("live").document(str(chat_id)).delete()
-    entries = [(key, item) for key, item in doc.to_dict().items()]
+    entries = sorted(
+        [(key, item) for key, item in doc.to_dict().items()],
+        key=lambda x: x[0]
+    )
     return entries
 
 
@@ -100,7 +105,7 @@ def _send_report(context: CallbackContext, user_time, entries, metadata):
         int(metadata["chat_id"]),
         text=message
     )
-    if "email" in metadata:
+    if "email" in metadata and metadata["email"] != "":
         _send_email(
             metadata["email"],
             user_time,
