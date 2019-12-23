@@ -1,4 +1,5 @@
 import os
+import logging
 from datetime import datetime, timedelta
 from typing import List
 
@@ -10,12 +11,14 @@ from db import DB
 
 MAILGUN_DOMAIN = os.environ.get("MG_DOMAIN", "")
 MAILGUN_API_KEY = os.environ.get("MG_KEY", "")
+LOGGER = logging.getLogger(__name__)
 
 
 def _send_email(recipient: str, user_time: datetime, entries: List, message: str):
     if MAILGUN_DOMAIN == "" or MAILGUN_API_KEY == "":
-        print("MAILGUN_DOMAIN and/or MAILGUN_API_KEY environment "
-              "variable is not set! Skipping emailing...")
+        LOGGER.warning(
+            "MAILGUN_DOMAIN and/or MAILGUN_API_KEY environment "
+            "variable is not set! Skipping emailing...")
         return
     template_loader = FileSystemLoader(searchpath="templates/")
     template_env = Environment(loader=template_loader)
@@ -41,7 +44,7 @@ def _send_email(recipient: str, user_time: datetime, entries: List, message: str
             "html": output
         }
     )
-    print(recipient, res.status_code)
+    LOGGER.info(recipient, res.status_code)
 
 
 def get_all_metadata():
@@ -112,6 +115,7 @@ def _send_report(context: CallbackContext, user_time, entries, metadata):
 
 
 def check_and_make_report(context: CallbackContext, archive: bool = True):
+    LOGGER.info("Check and make reports...")
     user_meta = get_all_metadata()
     current_time = datetime.utcnow()
     for metadata in user_meta:
@@ -119,6 +123,6 @@ def check_and_make_report(context: CallbackContext, archive: bool = True):
             continue
         user_time = current_time + timedelta(hours=metadata["timezone"])
         if user_time.hour == metadata["end_of_day"]:
-            print(f"Making report for {metadata['chat_id']}")
+            LOGGER.info(f"Making report for {metadata['chat_id']}")
             entries = _archive_journal(user_time, metadata["chat_id"], archive)
             _send_report(context, user_time, entries, metadata)

@@ -299,7 +299,7 @@ def _get_nearest_start(minute=10):
     if now.minute < minute:
         return now.replace(minute=minute, second=0)
     return (now.replace(minute=minute, second=0) +
-            datetime.timedelta(hours=1))
+            timedelta(hours=1))
 
 
 def main():
