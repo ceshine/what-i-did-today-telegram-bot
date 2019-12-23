@@ -1,5 +1,7 @@
 import os
+import sys
 import logging
+import traceback
 from datetime import datetime, timedelta
 
 from telegram.ext import (
@@ -11,7 +13,7 @@ from google.cloud import firestore
 from db import DB
 from reporting import check_and_make_report
 
-TIMEZONE, END_OF_DAY = range(2)
+TIMEZONE, END_OF_DAY, EMAIL = range(3)
 CONFIRM, SELECT, EDIT = range(3)
 
 # Enable logging
@@ -206,6 +208,11 @@ def edit_confirm(update, context):
 def error(update, context):
     """Log Errors caused by Updates."""
     LOGGER.warning('Update "%s" caused error "%s"', update, context.error)
+    _, _, exc_traceback = sys.exc_info()
+    traceback.print_tb(exc_traceback)
+    update.message.reply_text(
+        "Oops... Something went wrong..."
+    )
 
 
 def config(update, context):
@@ -244,6 +251,27 @@ def set_end_of_day(update, context):
         )
         return END_OF_DAY
     context.user_data['end_of_day'] = end_of_day
+    update.message.reply_text(
+        "Awesome! Finally, you can leave us your email to receive a daily"
+        " summary email of your fantastic achievements. Reply "
+        " \"skip\" to skip this step."
+    )
+    return EMAIL
+
+
+def set_email(update, context):
+    if update.message.text.lower() in ("cancel", "skip"):
+        if update.message.text.lower() == "cancel":
+            del context.user_data["end_of_day"]
+        return done(update, context)
+    try:
+        email = update.message.text
+    except:
+        update.message.reply_text(
+            "Somethine went wrong..."
+        )
+        return EMAIL
+    context.user_data['email'] = email
     return done(update, context)
 
 
@@ -256,10 +284,12 @@ def done(update, context):
         user_data = context.user_data
         DB.collection("meta").document(str(update.message.chat_id)).set({
             "end_of_day": user_data["end_of_day"],
-            "timezone": user_data["timezone"]
+            "timezone": user_data["timezone"],
+            "email": user_data.get("email", "")
         })
     update.message.reply_text(
         f'All set! Timezone: {user_data["timezone"]} End of day: {user_data["end_of_day"]}'
+        + (f' Email: {user_data["email"]}' if "email" in user_data else "")
     )
     return ConversationHandler.END
 
@@ -294,7 +324,10 @@ def main():
             ],
             END_OF_DAY: [
                 MessageHandler(Filters.text, set_end_of_day)
-            ]
+            ],
+            EMAIL: [
+                MessageHandler(Filters.text, set_email)
+            ],
         },
         fallbacks=[]
     ))
@@ -347,12 +380,16 @@ def main():
     # Start the Bot
     updater.start_polling()
 
-    # job_queue.run_repeating(
-    #     check_and_make_report, interval=3600, first=_get_nearest_start()
-    # )
     job_queue.run_repeating(
-        check_and_make_report, interval=3600, first=5
+        check_and_make_report, interval=3600, first=_get_nearest_start()
     )
+    # # For testing:
+    # from functools import partial
+    # func = partial(check_and_make_report, archive=False)
+    # func.__name__ = "check_and_make_report"
+    # job_queue.run_repeating(
+    #     func, interval=3600, first=5,
+    # )
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since

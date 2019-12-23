@@ -1,6 +1,6 @@
 FROM python:3.7
 
-RUN pip install --no-cache python-telegram-bot==12.0.0 requests==2.18.4 retrying==1.3.3 google-cloud-firestore==1.6.0 ujson==1.35
+RUN pip install --no-cache python-telegram-bot==12.0.0 requests==2.18.4 retrying==1.3.3 google-cloud-firestore==1.6.0 ujson==1.35 requests==2.20.1 jinja2==2.10.1
 
 COPY src /src
 COPY keyfile.json /src/
