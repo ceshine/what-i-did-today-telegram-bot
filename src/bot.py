@@ -380,16 +380,16 @@ def main():
     # Start the Bot
     updater.start_polling()
 
-    job_queue.run_repeating(
-        check_and_make_report, interval=3600, first=_get_nearest_start()
-    )
-    # # For testing:
-    # from functools import partial
-    # func = partial(check_and_make_report, archive=False)
-    # func.__name__ = "check_and_make_report"
     # job_queue.run_repeating(
-    #     func, interval=3600, first=5,
+    #     check_and_make_report, interval=3600, first=_get_nearest_start()
     # )
+    # For testing:
+    from functools import partial
+    func = partial(check_and_make_report, archive=False)
+    func.__name__ = "check_and_make_report"
+    job_queue.run_repeating(
+        func, interval=3600, first=5,
+    )
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since

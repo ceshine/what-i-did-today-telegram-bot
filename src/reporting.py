@@ -27,19 +27,21 @@ def _send_email(recipient: str, user_time: datetime, entries: List, message: str
         output = template.render(
             formatted_date=user_time.strftime("%Y-%m-%d")
         )
+        subject = f"{user_time.strftime('%Y%m%d')} — Remember that You Are Awesome!"
     else:
         template = template_env.get_template("normal.jinja")
         output = template.render(
             formatted_date=user_time.strftime("%Y-%m-%d"),
             entries=entries
         )
+        subject = f"{user_time.strftime('%Y%m%d')} — Congratulation on Another Awesome Day!"
     res = requests.post(
         f"https://api.mailgun.net/v3/{MAILGUN_DOMAIN}/messages",
         auth=("api", MAILGUN_API_KEY),
         data={
             "from": f"What I Did Today <bot@{MAILGUN_DOMAIN}>",
             "to": [recipient],
-            "subject": f"{user_time.strftime('%Y%m%d')} — Congratulation on Another Awesome Day!",
+            "subject": subject,
             "text": message,
             "html": output
         }
@@ -87,24 +89,26 @@ def _send_report(context: CallbackContext, user_time, entries, metadata):
             metadata["chat_id"],
             text="You don't have any entries today.\nNo worries. Tomorrow's a brand new day!"
         )
-        return
-    formatted = [
-        "* {} — {}".format(
-            _parse_timestamp(
-                key, metadata
-            ).strftime('%H:%M:%S'),
-            item
-        ) for key, item in entries
-    ]
-    message = (
-        "This is what you did today:\n" +
-        "\n".join(formatted) +
-        "\nGood job!"
-    )
-    context.bot.send_message(
-        int(metadata["chat_id"]),
-        text=message
-    )
+        message = ""
+        entries = []
+    else:
+        formatted = [
+            "* {} — {}".format(
+                _parse_timestamp(
+                    key, metadata
+                ).strftime('%H:%M:%S'),
+                item
+            ) for key, item in entries
+        ]
+        message = (
+            "This is what you did today:\n" +
+            "\n".join(formatted) +
+            "\nGood job!"
+        )
+        context.bot.send_message(
+            int(metadata["chat_id"]),
+            text=message
+        )
     if "email" in metadata and metadata["email"] != "":
         _send_email(
             metadata["email"],
