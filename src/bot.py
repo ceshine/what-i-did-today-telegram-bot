@@ -25,14 +25,35 @@ LOGGER = logging.getLogger(__name__)
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 DEBUG = os.environ.get("DEBUG", None)
 
-# Define a few command handlers. These usually take the two arguments update and
-# context. Error handlers also receive the raised TelegramError object in error.
+HELP_TEXT = (
+    "How to use this bot:\n"
+    "First step — run /config command to tell us your timezone and when does your day end\n"
+    "Then when you achieve something in the day, describe it to the bot. "
+    "The bot will ask for your confirmation. Confirm and that's it!\n"
+    "Other commands:\n"
+    "+ /current — show entries collected so far today.\n"
+    "+ /edit — edit or delete entries today.\n"
+    "\nNote: currently we archive your daily achievement automatically. "
+    "In the future we'll provide you a way to view your archive and "
+    "also let you decide to keep an archive or not."
+)
 
 
 def start(update, context):
     """Send a message when the command /start is issued."""
-    update.message.reply_text(
-        f'Hi! {update.message.from_user.first_name}')
+    context.bot.send_message(
+        f'Hi, {update.message.from_user.first_name}. Welcome to "What I Did Today"(WIDT)!\n'
+        'Feeling depressed? WIDT wants to help! '
+        'Talk to this bot about your achievements, small or big, any time of the day, '
+        'and we will show you those achievements at the end of the day as a reminder '
+        'of how fantastic you are.\n'
+        '(Please don\'t tell the bot any sensitive information, e.g., your home address or bank account.)'
+    )
+    context.bot.send_message(HELP_TEXT)
+
+
+def help(update, context):
+    update.message.reply(HELP_TEXT)
 
 
 def journal(update, context):
@@ -217,7 +238,8 @@ def error(update, context):
 
 def config(update, context):
     update.message.reply_text(
-        "Specify the timezone you're in (e.g. -8, +1, +8).")
+        "Specify the timezone you're in (e.g., -8, +1, +8)."
+    )
     return TIMEZONE
 
 
@@ -230,11 +252,14 @@ def set_timezone(update, context):
             raise ValueError()
     except ValueError:
         update.message.reply_text(
-            "Timezone should be in the range of [-12, +14].")
+            "Timezone should be in the range of [-12, +14]."
+        )
         return TIMEZONE
     context.user_data['timezone'] = timezone
     update.message.reply_text(
-        "Great! Now specify at what time your day ends (0-23):")
+        "Great! Now specify at which hour your day ends (0-23):\n"
+        "(We'll collect the entries and send you a summary at that time)"
+    )
     return END_OF_DAY
 
 
@@ -332,6 +357,7 @@ def main():
         fallbacks=[]
     ))
 
+    dp.add_handler(CommandHandler('help', list_current))
     dp.add_handler(CommandHandler('current', list_current))
 
     dp.add_handler(ConversationHandler(
