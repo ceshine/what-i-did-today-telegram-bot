@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import logging
 import traceback
@@ -290,9 +291,13 @@ def set_email(update, context):
         return done(update, context)
     try:
         email = update.message.text
+        assert re.match(
+            r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)",
+            email
+        )
     except:
         update.message.reply_text(
-            "Somethine went wrong..."
+            "That doesn't seem like an email address. Please try again..."
         )
         return EMAIL
     context.user_data['email'] = email
