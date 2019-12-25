@@ -95,9 +95,11 @@ def load_meta(chat_id, user_data):
             return None
         user_data["timezone"] = metadata["timezone"]
         user_data["end_of_day"] = metadata["end_of_day"]
+        user_data["email"] = metadata.get("email")
     return {
         "timezone": user_data["timezone"],
         "end_of_day": user_data["end_of_day"],
+        "email": user_data["email"]
     }
 
 
@@ -237,15 +239,27 @@ def error(update, context):
 
 
 def config(update, context):
+    meta = load_meta(update.message.chat_id, context.user_data)
+    current = (
+        f"Current config:\n\n" +
+        f'Timezone: {meta["timezone"] or "Empty"}\n'
+        f'End of Day: {meta["end_of_day"] or "Empty"}\n'
+        f'Email: {meta["email"] or "Empty"}\n\n'
+    )
     update.message.reply_text(
-        "Specify the timezone you're in (e.g., -8, +1, +8)."
+        current +
+        "Specify the timezone you're in (e.g., -8, +1, +8).\n"
+        "Type \'cancel\' to stop the process in any step."
     )
     return TIMEZONE
 
 
 def set_timezone(update, context):
     if update.message.text.lower() == "cancel":
-        return done(update, context)
+        update.message.reply_text(
+            "Alright. We can do this later."
+        )
+        return ConversationHandler.END
     try:
         timezone = int(update.message.text)
         if timezone < -12 or timezone > 14:
@@ -255,7 +269,7 @@ def set_timezone(update, context):
             "Timezone should be in the range of [-12, +14]."
         )
         return TIMEZONE
-    context.user_data['timezone'] = timezone
+    context.user_data['timezone_new'] = timezone
     update.message.reply_text(
         "Great! Now specify at which hour your day ends (0-23):\n"
         "(We'll collect the entries and send you a summary at that time)"
@@ -265,7 +279,10 @@ def set_timezone(update, context):
 
 def set_end_of_day(update, context):
     if update.message.text.lower() == "cancel":
-        return done(update, context)
+        update.message.reply_text(
+            "Alright. We can do this later."
+        )
+        return ConversationHandler.END
     try:
         end_of_day = int(update.message.text)
         if end_of_day < 0 or end_of_day > 23:
@@ -275,7 +292,7 @@ def set_end_of_day(update, context):
             "The end of day should be in the range of [0, 23]."
         )
         return END_OF_DAY
-    context.user_data['end_of_day'] = end_of_day
+    context.user_data['end_of_day_new'] = end_of_day
     update.message.reply_text(
         "Awesome! Finally, you can leave us your email to receive a daily"
         " summary email of your fantastic achievements. Reply "
@@ -285,9 +302,12 @@ def set_end_of_day(update, context):
 
 
 def set_email(update, context):
-    if update.message.text.lower() in ("cancel", "skip"):
-        if update.message.text.lower() == "cancel":
-            del context.user_data["end_of_day"]
+    if update.message.text.lower() == "cancel":
+        update.message.reply_text(
+            "Alright. We can do this later."
+        )
+        return ConversationHandler.END
+    if update.message.text.lower() == "skip":
         return done(update, context)
     try:
         email = update.message.text
@@ -300,25 +320,26 @@ def set_email(update, context):
             "That doesn't seem like an email address. Please try again..."
         )
         return EMAIL
-    context.user_data['email'] = email
+    context.user_data['email_new'] = email
     return done(update, context)
 
 
 def done(update, context):
-    if "end_of_day" not in context.user_data or "timezone" not in context.user_data:
-        update.message.reply_text(
-            "Alright. We can do this later."
-        )
-    else:
-        user_data = context.user_data
-        DB.collection("meta").document(str(update.message.chat_id)).set({
-            "end_of_day": user_data["end_of_day"],
-            "timezone": user_data["timezone"],
-            "email": user_data.get("email", "")
-        })
+    user_data = context.user_data
+    user_data["end_of_day"] = user_data["end_of_day_new"]
+    user_data["timezone"] = user_data["timezone_new"]
+    user_data["email"] = user_data.get("email_new", "")
+    for field in ("end_of_day_new", "timezone_new", "email_new"):
+        if field in user_data:
+            del user_data[field]
+    DB.collection("meta").document(str(update.message.chat_id)).set({
+        "end_of_day": user_data["end_of_day"],
+        "timezone": user_data["timezone"],
+        "email": user_data["email"]
+    })
     update.message.reply_text(
         f'All set! Timezone: {user_data["timezone"]} End of day: {user_data["end_of_day"]}'
-        + (f' Email: {user_data["email"]}' if "email" in user_data else "")
+        + (f' Email: {user_data["email"]}' if user_data["email"] else "")
     )
     return ConversationHandler.END
 
