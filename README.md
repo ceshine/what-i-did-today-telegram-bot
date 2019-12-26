@@ -6,6 +6,8 @@ Feeling depressed? We want to help! Talk to this bot about your achievements, sm
 
 (Please don't tell the bot any sensitive information, e.g., your home address or bank account.)
 
+Made by [@ceshine](https://t.me/ceshine).
+
 ## How to use this bot
 
 You need to download [Telegram](https://telegram.org/) and create an account if you haven't.
