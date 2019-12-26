@@ -101,7 +101,7 @@ def _send_report(context: CallbackContext, user_time, entries, metadata):
             ) for key, item in entries
         ]
         message = (
-            "This is what you did today:\n" +
+            "What you did today:\n" +
             "\n".join(formatted) +
             "\nGood job!"
         )
