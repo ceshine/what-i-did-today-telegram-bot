@@ -11,8 +11,8 @@ from telegram.ext import (
 )
 from google.cloud import firestore
 
-from db import DB
-from reporting import check_and_make_report
+from .db import DB
+from .reporting import check_and_make_report
 
 TIMEZONE, END_OF_DAY, EMAIL = range(3)
 CONFIRM, SELECT, EDIT = range(3)
@@ -23,7 +23,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 LOGGER = logging.getLogger(__name__)
 
-BOT_TOKEN = os.environ["BOT_TOKEN"]
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 DEBUG = os.environ.get("DEBUG", None)
 
 HELP_TEXT = (
@@ -357,6 +357,8 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
+    if BOT_TOKEN == "":
+        raise ValueError("BOT_TOKEN environment variable is not set.")
     updater = Updater(BOT_TOKEN, use_context=True)
     job_queue = updater.job_queue
 

@@ -7,7 +7,7 @@ import requests
 from telegram.ext import CallbackContext
 from jinja2 import FileSystemLoader, Environment
 
-from db import DB
+from .db import DB
 
 MAILGUN_DOMAIN = os.environ.get("MG_DOMAIN", "")
 MAILGUN_API_KEY = os.environ.get("MG_KEY", "")
