@@ -6,5 +6,5 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "keyfile.json"
 
 if os.environ.get("TEST_MODE"):
     DB = None
-
-DB = firestore.Client()
+else:
+    DB = firestore.Client()
