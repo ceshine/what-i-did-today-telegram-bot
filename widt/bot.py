@@ -52,7 +52,7 @@ def start(update, context):
         + HELP_TEXT)
 
 
-def help(update, context):
+def help_(update, context):
     update.message.reply_text(HELP_TEXT)
 
 
@@ -384,7 +384,7 @@ def main():
         fallbacks=[]
     ))
 
-    dp.add_handler(CommandHandler('help', list_current))
+    dp.add_handler(CommandHandler('help', help_))
     dp.add_handler(CommandHandler('current', list_current))
 
     dp.add_handler(ConversationHandler(

@@ -39,3 +39,4 @@ Instructions will be added later. Open an issue if you want them faster.
 - Email ownership verification: to prevent abuse and typos.
 - Archive presentation
 - Opt-out on archiving
+- Account deactivation command
