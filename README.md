@@ -1,5 +1,7 @@
 # What I Did Today
 
+[![CircleCI](https://circleci.com/gh/ceshine/what-i-did-today-telegram-bot/tree/master.svg?style=svg)](https://circleci.com/gh/ceshine/what-i-did-today-telegram-bot/tree/master)
+
 A telegram bot that helps you keep tabs on your daily achievements.
 
 Feeling depressed? We want to help! Talk to this bot about your achievements, small or big, at any time of the day, and we will show you those achievements at the end of the day as a reminder of how fantastic you are.
