@@ -1,5 +1,6 @@
 import os
 import logging
+from pathlib import Path
 from datetime import datetime, timedelta
 from typing import List
 
@@ -20,7 +21,9 @@ def _send_email(recipient: str, user_time: datetime, entries: List, message: str
             "MAILGUN_DOMAIN and/or MAILGUN_API_KEY environment "
             "variable is not set! Skipping emailing...")
         return
-    template_loader = FileSystemLoader(searchpath="templates/")
+    template_loader = FileSystemLoader(
+        searchpath=str(Path(__file__).parent / "templates")
+    )
     template_env = Environment(loader=template_loader)
     if len(entries) == 0:
         template = template_env.get_template("skip.jinja")
@@ -123,12 +126,14 @@ def _send_report(context: CallbackContext, user_time, entries, metadata):
         )
 
 
-def check_and_make_report(context: CallbackContext, archive: bool = True):
+def check_and_make_report(context: CallbackContext, archive: bool = True, whitelist=None):
     LOGGER.info("Check and make reports...")
     user_meta = get_all_metadata()
     current_time = datetime.utcnow()
     for metadata in user_meta:
         if "timezone" not in metadata or "end_of_day" not in metadata:
+            continue
+        if whitelist and metadata["chat_id"] not in whitelist:
             continue
         user_time = current_time + timedelta(hours=metadata["timezone"])
         if user_time.hour == metadata["end_of_day"]:

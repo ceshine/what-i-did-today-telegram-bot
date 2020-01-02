@@ -24,6 +24,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 LOGGER = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
+# Pass the chat_id to be debugged in DEBUG environment variable
 DEBUG = os.environ.get("DEBUG", None)
 
 HELP_TEXT = (
@@ -436,7 +437,7 @@ def main():
     if DEBUG:
         # For testing:
         from functools import partial
-        func = partial(check_and_make_report, archive=False)
+        func = partial(check_and_make_report, archive=False, whitelist=[DEBUG])
         func.__name__ = "check_and_make_report"
         job_queue.run_repeating(
             func, interval=3600, first=5,
