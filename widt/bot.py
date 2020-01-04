@@ -87,13 +87,14 @@ def journal_confirm(update, context):
 
 
 def load_meta(chat_id, user_data):
+    empty = {"timezone": None, "end_of_day": None, "email": None}
     if "timezone" not in user_data or "end_of_day" not in user_data:
         doc = DB.collection("meta").document(str(chat_id)).get()
         if doc.exists is False:
-            return None
+            return empty
         metadata = doc.to_dict()
         if "timezone" not in metadata or "end_of_day" not in metadata:
-            return None
+            return empty
         user_data["timezone"] = metadata["timezone"]
         user_data["end_of_day"] = metadata["end_of_day"]
         user_data["email"] = metadata.get("email")
@@ -241,6 +242,7 @@ def error(update, context):
 
 def config(update, context):
     meta = load_meta(update.message.chat_id, context.user_data)
+    current = ""
     current = (
         f"Current config:\n\n" +
         f'Timezone: {meta["timezone"] or "Empty"}\n'
