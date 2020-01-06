@@ -15,6 +15,7 @@ def load_meta(chat_id, user_data, force_update: bool = False):
     if force_update is True or "metadata" not in user_data:
         doc = DB.collection("meta").document(str(chat_id)).get()
         if doc.exists is False:
+            user_data["metadata"] = {}
             return empty
         metadata = doc.to_dict()
         if "timezone" not in metadata or "end_of_day" not in metadata:

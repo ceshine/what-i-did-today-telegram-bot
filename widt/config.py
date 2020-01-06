@@ -104,7 +104,7 @@ def set_email(update, context):
 
 def done(update, context):
     user_data = context.user_data
-    metadata = context.user_data.get('metadata', {})
+    metadata = context.user_data['metadata']
     metadata["end_of_day"] = user_data["end_of_day_new"]
     metadata["timezone"] = user_data["timezone_new"]
     if metadata.get("email", "") != user_data["email_new"]:
@@ -127,7 +127,6 @@ def done(update, context):
             if metadata.get("email") else ""
         )
     )
-    context.user_data["metadata"] = metadata
     return ConversationHandler.END
 
 
