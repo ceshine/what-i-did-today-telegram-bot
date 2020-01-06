@@ -12,10 +12,11 @@ from telegram.ext import (
 from google.cloud import firestore
 
 from .db import DB
+from .meta import check_config_exists
+from .config import add_config_handler
 from .reporting import check_and_make_report
 from .email_verification import send_code, resend_code, verify_code
 
-TIMEZONE, END_OF_DAY, EMAIL = range(3)
 CONFIRM, SELECT, EDIT = range(3)
 
 # Enable logging
@@ -89,39 +90,12 @@ def journal_confirm(update, context):
     return ConversationHandler.END
 
 
-def check_config_exists(update, chat_id, user_data, force_update: bool = False):
-    data = load_meta(chat_id, user_data, force_update)
-    if "timezone" not in data or not data["timezone"]:
-        update.message.reply_text("You need to run /config command first!")
-        return False
-    return data
-
-
-def load_meta(chat_id, user_data, force_update: bool = False):
-    empty = {"timezone": None, "end_of_day": None,
-             "email": None, "verified": False}
-    if force_update is True or "metadata" not in user_data:
-        doc = DB.collection("meta").document(str(chat_id)).get()
-        if doc.exists is False:
-            return empty
-        metadata = doc.to_dict()
-        if "timezone" not in metadata or "end_of_day" not in metadata:
-            return empty
-        user_data["metadata"] = metadata
-    return {
-        "timezone": metadata["timezone"],
-        "end_of_day": metadata["end_of_day"],
-        "email": metadata.get("email"),
-        "verified": metadata.get("email_verified", False)
-    }
-
-
 def get_live_list(update, context):
     doc = DB.collection("live").document(str(update.message.chat_id)).get()
     if doc.exists is False or len(doc.to_dict()) == 0:
         update.message.reply_text("No entries has yet been logged today!")
         return None, None
-    offset = timedelta(hours=meta["timezone"])
+    offset = timedelta(hours=context.user_data["metadata"]["timezone"])
     entries = sorted(
         [
             (
@@ -251,128 +225,6 @@ def error(update, context):
     )
 
 
-def config(update, context):
-    meta = load_meta(update.message.chat_id, context.user_data)
-    current = ""
-    current = (
-        f"Current config:\n\n" +
-        f'Timezone: {meta["timezone"] or "Empty"}\n'
-        f'End of Day: {meta["end_of_day"] or "Empty"}\n'
-        f'Email: {meta["email"] or "Empty"} Verified: {meta["verified"]}\n\n'
-    )
-    update.message.reply_text(
-        current +
-        "Specify the timezone you're in (e.g., -8, +1, +8).\n"
-        "Type \'cancel\' to stop the process in any step."
-    )
-    return TIMEZONE
-
-
-def set_timezone(update, context):
-    if update.message.text.lower() == "cancel":
-        update.message.reply_text(
-            "Alright. We can do this later."
-        )
-        return ConversationHandler.END
-    try:
-        timezone = int(update.message.text)
-        if timezone < -12 or timezone > 14:
-            raise ValueError()
-    except ValueError:
-        update.message.reply_text(
-            "Timezone should be in the range of [-12, +14]."
-        )
-        return TIMEZONE
-    context.user_data['timezone_new'] = timezone
-    update.message.reply_text(
-        "Great! Now specify at which hour your day ends (0-23):\n"
-        "(We'll collect the entries and send you a summary at that time)"
-    )
-    return END_OF_DAY
-
-
-def set_end_of_day(update, context):
-    if update.message.text.lower() == "cancel":
-        update.message.reply_text(
-            "Alright. We can do this later."
-        )
-        return ConversationHandler.END
-    try:
-        end_of_day = int(update.message.text)
-        if end_of_day < 0 or end_of_day > 23:
-            raise ValueError()
-    except:
-        update.message.reply_text(
-            "The end of day should be in the range of [0, 23]."
-        )
-        return END_OF_DAY
-    context.user_data['end_of_day_new'] = end_of_day
-    update.message.reply_text(
-        "Awesome! Finally, you can leave us your email to receive a daily"
-        " summary email of your fantastic achievements. Reply "
-        " \"skip\" to skip this step (and keep your current config) or"
-        " \"none\" to erase the current config."
-    )
-    return EMAIL
-
-
-def set_email(update, context):
-    if update.message.text.lower() == "cancel":
-        update.message.reply_text(
-            "Alright. We can do this later."
-        )
-        return ConversationHandler.END
-    if update.message.text.lower() == "skip":
-        context.user_data["email_new"] = context.user_data.get(
-            "metadata", {}).get("email", "")
-        return done(update, context)
-    if update.message.text.lower() == "none":
-        context.user_data["email_new"] = ""
-        return done(update, context)
-    try:
-        email = update.message.text
-        assert re.match(
-            r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)",
-            email
-        )
-    except:
-        update.message.reply_text(
-            "That doesn't seem like an email address. Please try again..."
-        )
-        return EMAIL
-    context.user_data['email_new'] = email
-    return done(update, context)
-
-
-def done(update, context):
-    user_data = context.user_data
-    metadata = context.user_data.get('metadata', {})
-    metadata["end_of_day"] = user_data["end_of_day_new"]
-    metadata["timezone"] = user_data["timezone_new"]
-    if metadata.get("email", "") != user_data["email_new"]:
-        # Got an new email address
-        metadata["email"] = user_data["email_new"]
-        if metadata["email"]:
-            send_code(update, user_data)
-    for field in ("end_of_day_new", "timezone_new", "email_new"):
-        if field in user_data:
-            del user_data[field]
-    DB.collection("meta").document(str(update.message.chat_id)).set({
-        "end_of_day": metadata["end_of_day"],
-        "timezone": metadata["timezone"],
-        "email": metadata.get("email", "")
-    }, merge=True)
-    update.message.reply_text(
-        f'All set! Timezone: {metadata["timezone"]} End of day: {metadata["end_of_day"]}'
-        + (
-            f' Email: {metadata.get("email")} Verified: {metadata.get("email_verified", False)}'
-            if metadata.get("email") else ""
-        )
-    )
-    context.user_data["metadata"] = metadata
-    return ConversationHandler.END
-
-
 def _get_nearest_start(minute=10):
     now = datetime.now()
     if now.minute < minute:
@@ -397,21 +249,7 @@ def main():
     # on different commands - answer in Telegram
     dp.add_handler(CommandHandler("start", start))
 
-    dp.add_handler(ConversationHandler(
-        entry_points=[CommandHandler('config', config)],
-        states={
-            TIMEZONE: [
-                MessageHandler(Filters.text, set_timezone)
-            ],
-            END_OF_DAY: [
-                MessageHandler(Filters.text, set_end_of_day)
-            ],
-            EMAIL: [
-                MessageHandler(Filters.text, set_email)
-            ],
-        },
-        fallbacks=[]
-    ))
+    add_config_handler(dp)
 
     dp.add_handler(CommandHandler(
         "verify", verify_code, pass_args=True))

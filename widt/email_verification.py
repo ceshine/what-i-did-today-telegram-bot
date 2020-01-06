@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import requests
 
 from .db import DB
+from .meta import check_config_exists
 
 MAILGUN_DOMAIN = os.environ.get("MG_DOMAIN", "")
 MAILGUN_API_KEY = os.environ.get("MG_KEY", "")
@@ -71,14 +72,18 @@ def send_code(update, user_data):
 
 
 def verify_code(update, context):
+    if not check_config_exists(update, update.message.chat_id, context.user_data):
+        return
     try:
         code = context.args[0]
         data = _get_user_meta(str(update.message.chat_id), context.user_data)
         if not data.get("email") or not data.get("email_verification_code"):
-            update.message.reply_text("No verification email sent to you yet!")
+            update.message.reply_text(
+                "No verification email has been sent to you yet!")
             return
     except (IndexError, ValueError):
         update.message.reply_text('Usage: /verify <code>')
+        return
     if data["email_verification_code"] == code:
         DB.collection("meta").document(str(update.message.chat_id)).set({
             "email_verification_code": "",
@@ -92,6 +97,8 @@ def verify_code(update, context):
 
 
 def resend_code(update, context):
+    if not check_config_exists(update, update.message.chat_id, context.user_data):
+        return
     data = _get_user_meta(str(update.message.chat_id), context.user_data)
     if not data.get("email"):
         update.message.reply_text(
