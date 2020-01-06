@@ -299,7 +299,7 @@ def set_end_of_day(update, context):
     update.message.reply_text(
         "Awesome! Finally, you can leave us your email to receive a daily"
         " summary email of your fantastic achievements. Reply "
-        " \"skip\" to skip this step."
+        " \"skip\" to skip this step (and keep your current config)."
     )
     return EMAIL
 
@@ -311,6 +311,7 @@ def set_email(update, context):
         )
         return ConversationHandler.END
     if update.message.text.lower() == "skip":
+        user_data["email_new"] = context.user_data.get("email", "")
         return done(update, context)
     try:
         email = update.message.text
@@ -331,7 +332,7 @@ def done(update, context):
     user_data = context.user_data
     user_data["end_of_day"] = user_data["end_of_day_new"]
     user_data["timezone"] = user_data["timezone_new"]
-    user_data["email"] = user_data.get("email_new", "")
+    user_data["email"] = user_data.get["email_new"]
     for field in ("end_of_day_new", "timezone_new", "email_new"):
         if field in user_data:
             del user_data[field]
