@@ -49,7 +49,7 @@ def _send_email(recipient: str, user_time: datetime, entries: List, message: str
             "html": output
         }
     )
-    LOGGER.info("%s %d" % (recipient, res.status_code))
+    LOGGER.info("Report email: %s %d" % (recipient, res.status_code))
     if res.status_code != 200:
         LOGGER.error(res.text)
 
@@ -113,6 +113,12 @@ def _send_report(context: CallbackContext, user_time, entries, metadata):
             text=message
         )
     if "email" in metadata and metadata["email"] != "":
+        if not metadata.get("email_verified"):
+            LOGGER.info(
+                f"Email of {metadata['chat_id']} ({metadata['email']}) not verified."
+                " Skipped..."
+            )
+            return
         _send_email(
             metadata["email"],
             user_time,

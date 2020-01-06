@@ -13,6 +13,7 @@ from google.cloud import firestore
 
 from .db import DB
 from .reporting import check_and_make_report
+from .email_verification import send_code, resend_code, verify_code
 
 TIMEZONE, END_OF_DAY, EMAIL = range(3)
 CONFIRM, SELECT, EDIT = range(3)
@@ -87,7 +88,8 @@ def journal_confirm(update, context):
 
 
 def load_meta(chat_id, user_data):
-    empty = {"timezone": None, "end_of_day": None, "email": None}
+    empty = {"timezone": None, "end_of_day": None,
+             "email": None, "verified": False}
     if "timezone" not in user_data or "end_of_day" not in user_data:
         doc = DB.collection("meta").document(str(chat_id)).get()
         if doc.exists is False:
@@ -95,19 +97,18 @@ def load_meta(chat_id, user_data):
         metadata = doc.to_dict()
         if "timezone" not in metadata or "end_of_day" not in metadata:
             return empty
-        user_data["timezone"] = metadata["timezone"]
-        user_data["end_of_day"] = metadata["end_of_day"]
-        user_data["email"] = metadata.get("email")
+        user_data["metadata"] = metadata
     return {
-        "timezone": user_data["timezone"],
-        "end_of_day": user_data["end_of_day"],
-        "email": user_data["email"]
+        "timezone": metadata["timezone"],
+        "end_of_day": metadata["end_of_day"],
+        "email": metadata.get("email"),
+        "verified": metadata.get("email_verified", False)
     }
 
 
 def get_live_list(update, context):
     meta = load_meta(update.message.chat_id, context.user_data)
-    if meta is None:
+    if meta["timezone"] is None:
         update.message.reply_text("You need to run /config command first!")
         return None, None
     doc = DB.collection("live").document(str(update.message.chat_id)).get()
@@ -247,7 +248,7 @@ def config(update, context):
         f"Current config:\n\n" +
         f'Timezone: {meta["timezone"] or "Empty"}\n'
         f'End of Day: {meta["end_of_day"] or "Empty"}\n'
-        f'Email: {meta["email"] or "Empty"}\n\n'
+        f'Email: {meta["email"] or "Empty"} Verified: {meta["verified"]}\n\n'
     )
     update.message.reply_text(
         current +
@@ -299,7 +300,8 @@ def set_end_of_day(update, context):
     update.message.reply_text(
         "Awesome! Finally, you can leave us your email to receive a daily"
         " summary email of your fantastic achievements. Reply "
-        " \"skip\" to skip this step (and keep your current config)."
+        " \"skip\" to skip this step (and keep your current config) or"
+        " \"none\" to erase the current config."
     )
     return EMAIL
 
@@ -311,7 +313,11 @@ def set_email(update, context):
         )
         return ConversationHandler.END
     if update.message.text.lower() == "skip":
-        user_data["email_new"] = context.user_data.get("email", "")
+        context.user_data["email_new"] = context.user_data.get(
+            "metadata", {}).get("email", "")
+        return done(update, context)
+    if update.message.text.lower() == "none":
+        context.user_data["email_new"] = ""
         return done(update, context)
     try:
         email = update.message.text
@@ -330,20 +336,28 @@ def set_email(update, context):
 
 def done(update, context):
     user_data = context.user_data
-    user_data["end_of_day"] = user_data["end_of_day_new"]
-    user_data["timezone"] = user_data["timezone_new"]
-    user_data["email"] = user_data.get["email_new"]
+    metadata = context.user_data.get('metadata', {})
+    metadata["end_of_day"] = user_data["end_of_day_new"]
+    metadata["timezone"] = user_data["timezone_new"]
+    if metadata.get("email", "") != user_data["email_new"]:
+        # Got an new email address
+        metadata["email"] = user_data["email_new"]
+        if metadata["email"]:
+            send_code(update, user_data)
     for field in ("end_of_day_new", "timezone_new", "email_new"):
         if field in user_data:
             del user_data[field]
     DB.collection("meta").document(str(update.message.chat_id)).set({
-        "end_of_day": user_data["end_of_day"],
-        "timezone": user_data["timezone"],
-        "email": user_data["email"]
-    })
+        "end_of_day": metadata["end_of_day"],
+        "timezone": metadata["timezone"],
+        "email": metadata.get("email", "")
+    }, merge=True)
     update.message.reply_text(
-        f'All set! Timezone: {user_data["timezone"]} End of day: {user_data["end_of_day"]}'
-        + (f' Email: {user_data["email"]}' if user_data["email"] else "")
+        f'All set! Timezone: {metadata["timezone"]} End of day: {metadata["end_of_day"]}'
+        + (
+            f' Email: {metadata.get("email")} Verified: {metadata.get("email_verified", False)}'
+            if metadata.get("email") else ""
+        )
     )
     return ConversationHandler.END
 
@@ -387,6 +401,11 @@ def main():
         },
         fallbacks=[]
     ))
+
+    dp.add_handler(CommandHandler(
+        "verify", verify_code, pass_args=True))
+    dp.add_handler(CommandHandler(
+        "resend", resend_code))
 
     dp.add_handler(CommandHandler('help', help_))
     dp.add_handler(CommandHandler('current', list_current))
@@ -443,7 +462,7 @@ def main():
         func = partial(check_and_make_report, archive=False, whitelist=[DEBUG])
         func.__name__ = "check_and_make_report"
         job_queue.run_repeating(
-            func, interval=3600, first=5,
+            func, interval=300, first=5,
         )
     else:
         job_queue.run_repeating(
