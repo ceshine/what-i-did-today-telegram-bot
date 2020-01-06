@@ -35,8 +35,8 @@ Instructions will be added later. Open an issue if you want them faster.
 
 ## TODO List
 
-- Testing
-- Email ownership verification: to prevent abuse and typos.
+- ~~Testing~~ Writing more tests.
+- ~~Email ownership verification: to prevent abuse and typos.~~
 - Archive presentation
 - Opt-out on archiving
 - Account deactivation command
