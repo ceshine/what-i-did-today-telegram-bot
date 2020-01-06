@@ -35,7 +35,7 @@ def _send_email(email, code) -> bool:
             "from": f"What I Did Today <bot@{MAILGUN_DOMAIN}>",
             "to": [email],
             "subject": "Verification Code for What I Did Today Bot",
-            "text": f"Your verification code: {code}\nPlease send `/verify {code}` to the bot to verify your email."
+            "text": f"Please send \"/verify {code}\" (text inside the quote) to the bot to verify your email."
         }
     )
     LOGGER.info("Verification email: %s %d" % (code, res.status_code))
