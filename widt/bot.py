@@ -59,6 +59,8 @@ def help_(update, context):
 
 
 def journal(update, context):
+    if not check_config_exists(update, update.message.chat_id, context.user_data):
+        return
     context.chat_data['pending'] = update.message.text
     update.message.reply_text(
         "Please confirm this entry (y/n):\n" + update.message.text
@@ -87,10 +89,18 @@ def journal_confirm(update, context):
     return ConversationHandler.END
 
 
-def load_meta(chat_id, user_data):
+def check_config_exists(update, chat_id, user_data, force_update: bool = False):
+    data = load_meta(chat_id, user_data, force_update)
+    if "timezone" not in data or not data["timezone"]:
+        update.message.reply_text("You need to run /config command first!")
+        return False
+    return data
+
+
+def load_meta(chat_id, user_data, force_update: bool = False):
     empty = {"timezone": None, "end_of_day": None,
              "email": None, "verified": False}
-    if "timezone" not in user_data or "end_of_day" not in user_data:
+    if force_update is True or "metadata" not in user_data:
         doc = DB.collection("meta").document(str(chat_id)).get()
         if doc.exists is False:
             return empty
@@ -107,10 +117,6 @@ def load_meta(chat_id, user_data):
 
 
 def get_live_list(update, context):
-    meta = load_meta(update.message.chat_id, context.user_data)
-    if meta["timezone"] is None:
-        update.message.reply_text("You need to run /config command first!")
-        return None, None
     doc = DB.collection("live").document(str(update.message.chat_id)).get()
     if doc.exists is False or len(doc.to_dict()) == 0:
         update.message.reply_text("No entries has yet been logged today!")
@@ -136,6 +142,8 @@ def get_live_list(update, context):
 
 
 def list_current(update, context) -> None:
+    if not check_config_exists(update, update.message.chat_id, context.user_data):
+        return
     _, formatted = get_live_list(update, context)
     if formatted:
         update.message.reply_text(
@@ -144,6 +152,8 @@ def list_current(update, context) -> None:
 
 
 def edit_list(update, context):
+    if not check_config_exists(update, update.message.chat_id, context.user_data):
+        return
     entries, formatted = get_live_list(update, context)
     if entries:
         context.chat_data["entries"] = entries
@@ -359,6 +369,7 @@ def done(update, context):
             if metadata.get("email") else ""
         )
     )
+    context.user_data["metadata"] = metadata
     return ConversationHandler.END
 
 
