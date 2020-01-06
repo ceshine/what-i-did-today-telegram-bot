@@ -27,6 +27,9 @@ def test_help(mocker):
 
 
 def test_journal_positive(mocker):
+    # pretend hat the test user already has config set
+    mocker.patch('widt.bot.check_config_exists')
+    widt.bot.check_config_exists.return_value = True
     context = mocker.MagicMock()
     context.chat_data = {}
     update = mocker.MagicMock()
@@ -53,6 +56,9 @@ def test_journal_positive(mocker):
 
 
 def test_journal_negative(mocker):
+    # pretend hat the test user already has config set
+    mocker.patch('widt.bot.check_config_exists')
+    widt.bot.check_config_exists.return_value = True
     context = mocker.MagicMock()
     context.chat_data = {}
     update = mocker.MagicMock()
