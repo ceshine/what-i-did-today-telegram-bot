@@ -4,6 +4,7 @@ from telegram.ext import (
     Updater, CommandHandler, MessageHandler, Filters,
     ConversationHandler
 )
+from google.cloud import firestore
 
 from .db import DB
 from .meta import check_config_exists
