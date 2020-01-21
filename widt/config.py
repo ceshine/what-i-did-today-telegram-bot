@@ -4,19 +4,20 @@ from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Fi
 
 from .db import DB
 from .email_verification import send_code
-from .meta import check_config_exists, load_meta
+from .meta import check_config_exists, _get_user_meta
 
 TIMEZONE, END_OF_DAY, EMAIL = range(3)
 
 
 def config(update, context):
-    meta = load_meta(update.message.chat_id, context.user_data)
+    meta = _get_user_meta(update.message.chat_id, context.user_data)
     current = ""
     current = (
         f"Current config:\n\n" +
         f'Timezone: {meta["timezone"] or "Empty"}\n'
         f'End of Day: {meta["end_of_day"] or "Empty"}\n'
-        f'Email: {meta["email"] or "Empty"} Verified: {meta["verified"]}\n\n'
+        f'Reminder: {"Yes" if meta.get("reminder", True) else "No"}\n'
+        f'Email: {meta["email"] or "Empty"} Verified: {meta.get("email_verified", False)}\n\n'
     )
     update.message.reply_text(
         current +
@@ -130,6 +131,26 @@ def done(update, context):
     return ConversationHandler.END
 
 
+def set_reminder(update, context):
+    try:
+        code = context.args[0]
+        assert code.lower() in ("yes", "no")
+    except (IndexError, ValueError, AssertionError):
+        update.message.reply_text('Usage: /reminder [yes/no]')
+    DB.collection("meta").document(str(update.message.chat_id)).set({
+        "reminder": code == "yes"
+    }, merge=True)
+    context.user_data["reminder"] = (code == "yes")
+    if code == "yes":
+        update.message.reply_text(
+            'Okay! We will send you reminders from now.'
+        )
+    else:
+        update.message.reply_text(
+            'Okay! We will stop bugging you with reminders from now. Use `reminder yes` to turn it back on.'
+        )
+
+
 def add_config_handler(dp):
     dp.add_handler(ConversationHandler(
         entry_points=[CommandHandler('config', config)],
@@ -146,3 +167,5 @@ def add_config_handler(dp):
         },
         fallbacks=[]
     ))
+    dp.add_handler(CommandHandler(
+        "reminder", set_reminder, pass_args=True))

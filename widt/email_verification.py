@@ -6,20 +6,13 @@ from datetime import datetime, timedelta
 import requests
 
 from .db import DB
-from .meta import check_config_exists
+from .meta import check_config_exists, _get_user_meta
 
 MAILGUN_DOMAIN = os.environ.get("MG_DOMAIN", "")
 MAILGUN_API_KEY = os.environ.get("MG_KEY", "")
 LOGGER = logging.getLogger(__name__)
 EXPIRES = timedelta(hours=2)
 MIN_RESEND_GAP = timedelta(minutes=5)
-
-
-def _get_user_meta(chat_id, user_data):
-    doc = DB.collection("meta").document(chat_id).get()
-    assert doc.exists
-    user_data["metadata"] = doc.to_dict()
-    return user_data["metadata"]
 
 
 def _send_email(email, code) -> bool:
@@ -72,7 +65,12 @@ def send_code(update, user_data):
 
 
 def verify_code(update, context):
-    if not check_config_exists(update, update.message.chat_id, context.user_data):
+    if not check_config_exists(
+        update, update.message.chat_id, context.user_data,
+        update_cache=True
+    ):
+        update.message.reply_text(
+            'Please run /config first to set your email.')
         return
     try:
         code = context.args[0]
@@ -84,6 +82,7 @@ def verify_code(update, context):
     except (IndexError, ValueError):
         update.message.reply_text('Usage: /verify <code>')
         return
+    # LOGGER.info("%s, %s", data["email_verification_code"], code)
     if data["email_verification_code"] == code:
         DB.collection("meta").document(str(update.message.chat_id)).set({
             "email_verification_code": "",

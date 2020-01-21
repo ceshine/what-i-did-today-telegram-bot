@@ -87,11 +87,15 @@ def _parse_timestamp(timestamp, metadata):
 
 
 def _send_report(context: CallbackContext, user_time, entries, metadata):
-    if entries is None:
-        context.bot.send_message(
-            metadata["chat_id"],
-            text="You don't have any entries today.\nNo worries. Tomorrow's a brand new day!"
-        )
+    if not entries:
+        if metadata.get("reminder", True):
+            context.bot.send_message(
+                metadata["chat_id"],
+                text=(
+                    "You don't have any entries today.\nNo worries. Tomorrow's a brand new day!\n"
+                    "(Use the  `/reminder no` command to stop receiving this message.)"
+                )
+            )
         message = ""
         entries = []
     else:
@@ -119,17 +123,18 @@ def _send_report(context: CallbackContext, user_time, entries, metadata):
                 " Skipped..."
             )
             return
-        _send_email(
-            metadata["email"],
-            user_time,
-            message=message,
-            entries=[
-                (
-                    _parse_timestamp(key, metadata).strftime('%H:%M'),
-                    item
-                ) for key, item in entries
-            ]
-        )
+        if metadata.get("reminder", True) or entries:
+            _send_email(
+                metadata["email"],
+                user_time,
+                message=message,
+                entries=[
+                    (
+                        _parse_timestamp(key, metadata).strftime('%H:%M'),
+                        item
+                    ) for key, item in entries
+                ]
+            )
 
 
 def check_and_make_report(context: CallbackContext, archive: bool = True, whitelist=None):
@@ -137,6 +142,7 @@ def check_and_make_report(context: CallbackContext, archive: bool = True, whitel
     user_meta = get_all_metadata()
     current_time = datetime.utcnow()
     for metadata in user_meta:
+        LOGGER.debug("Processing chat_id: %s", metadata["chat_id"])
         if "timezone" not in metadata or "end_of_day" not in metadata:
             continue
         if whitelist and metadata["chat_id"] not in whitelist:

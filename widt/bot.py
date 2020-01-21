@@ -2,7 +2,6 @@ import os
 import re
 import sys
 import logging
-import traceback
 from datetime import datetime, timedelta
 
 from telegram.ext import (
@@ -17,10 +16,6 @@ from .config import add_config_handler
 from .journal import add_journal_handlers
 from .reporting import check_and_make_report
 from .email_verification import send_code, resend_code, verify_code
-
-# Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -60,9 +55,7 @@ def help_(update, context):
 
 def error(update, context):
     """Log Errors caused by Updates."""
-    LOGGER.warning('Update "%s" caused error "%s"', update, context.error)
-    _, _, exc_traceback = sys.exc_info()
-    traceback.print_tb(exc_traceback)
+    LOGGER.exception('Update "%s" caused error "%s"', update, context.error)
     update.message.reply_text(
         "Oops... Something went wrong..."
     )
@@ -107,6 +100,10 @@ def main():
 
     # Start the Bot
     updater.start_polling()
+
+    # Enable logging
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                        level=logging.DEBUG if DEBUG else logging.INFO)
 
     if DEBUG:
         # For testing:
