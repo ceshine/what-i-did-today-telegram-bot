@@ -4,12 +4,17 @@ from telegram.ext import (
     Updater, CommandHandler, MessageHandler, Filters,
     ConversationHandler
 )
+from telegram import ReplyKeyboardMarkup
 from google.cloud import firestore
 
 from .db import DB
 from .meta import check_config_exists
 
 CONFIRM, SELECT, EDIT = range(3)
+YESNO_MARKUP = ReplyKeyboardMarkup(
+    [["y", "n"]], one_time_keyboard=True, resize_keyboard=True)
+YESNOABORT_MARKUP = ReplyKeyboardMarkup(
+    [["y", "n", "Abort"]], one_time_keyboard=True, resize_keyboard=True)
 
 
 def journal(update, context):
@@ -17,7 +22,8 @@ def journal(update, context):
         return
     context.chat_data['pending'] = update.message.text
     update.message.reply_text(
-        "Please confirm this entry (y/n):\n" + update.message.text
+        "Please confirm this entry (y/n):\n" + update.message.text,
+        reply_markup=YESNO_MARKUP
     )
     return CONFIRM
 
@@ -25,7 +31,10 @@ def journal(update, context):
 def journal_confirm(update, context):
     response = update.message.text.lower()
     if response not in ("y", "n"):
-        update.message.reply_text("Please answer **y** or **n**.")
+        update.message.reply_text(
+            "Please answer **y** or **n**.",
+            reply_markup=YESNO_MARKUP
+        )
         return CONFIRM
     if response == "y":
         DB.collection("live").document(
@@ -124,7 +133,8 @@ def edit_op(update, context):
         entries[context.chat_data["picked"]][2][:30] +
         "\nwith:\n" +
         update.message.text +
-        "\nPlease confirm (y/n/Abort)"
+        "\nPlease confirm (y/n/Abort)",
+        reply_markup=YESNOABORT_MARKUP
     )
     return CONFIRM
 
@@ -135,7 +145,8 @@ def edit_rm(update, context):
     update.message.reply_text(
         "Deleting this entry (truncated):\n" +
         entries[context.chat_data["picked"]][2][:30] +
-        "\nPlease confirm (y/n/Abort)"
+        "\nPlease confirm (y/n/Abort)",
+        reply_markup=YESNOABORT_MARKUP
     )
     return CONFIRM
 
@@ -144,7 +155,9 @@ def edit_confirm(update, context):
     response = update.message.text.lower()
     if response not in ("y", "n", "abort"):
         update.message.reply_markdown(
-            "Please answer *y*, *n*, or *abort*.")
+            "Please answer *y*, *n*, or *abort*.",
+            reply_markup=YESNOABORT_MARKUP
+        )
         return CONFIRM
     if response == "y":
         DB.collection("live").document(

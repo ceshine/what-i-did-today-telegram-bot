@@ -136,7 +136,7 @@ def set_reminder(update, context):
         code = context.args[0]
         assert code.lower() in ("yes", "no")
     except (IndexError, ValueError, AssertionError):
-        update.message.reply_text('Usage: /reminder [yes/no]')
+        update.message.reply_text('Usage: /reminder [yes|no]')
     DB.collection("meta").document(str(update.message.chat_id)).set({
         "reminder": code == "yes"
     }, merge=True)
