@@ -2,7 +2,7 @@ from telegram.ext import ConversationHandler
 
 from widt.config import (
     config, set_timezone, set_end_of_day, set_email,
-    TIMEZONE, END_OF_DAY, EMAIL
+    done, set_reminder, TIMEZONE, END_OF_DAY, EMAIL
 )
 import widt.config
 
@@ -96,3 +96,106 @@ def test_set_email_skip(mocker):
     set_email(update, context)
     print(user_data)
     assert user_data['email_new'] == "good@place.ea"
+
+
+def test_done(mocker):
+    mocker.patch('widt.config.send_code')
+    mocker.patch('widt.config.DB')
+    context = mocker.MagicMock()
+    user_data = {
+        "timezone_new": 5,
+        "end_of_day_new": 3,
+        "email_new": "good@place.ea",
+        "metadata": {}
+    }
+    context.user_data.__contains__.side_effect = user_data.__contains__
+    context.user_data.__getitem__.side_effect = user_data.__getitem__
+    context.user_data.__delitem__.side_effect = user_data.__delitem__
+    update = mocker.MagicMock()
+    assert done(update, context) == ConversationHandler.END
+    assert widt.config.send_code.call_args[0][0] is update
+    assert widt.config.send_code.call_args[0][1] is context.user_data
+    reply_text = update.message.reply_text.call_args[0][0]
+    assert reply_text.startswith("All set!")
+    print(user_data)
+    assert "end_of_day_new" not in user_data
+    assert "timezone_new" not in user_data
+    assert "email_new" not in user_data
+    widt.config.DB.collection.return_value.document.\
+        return_value.set.assert_called_once()
+    set_args = widt.config.DB.collection.return_value.\
+        document.return_value.set.call_args[0][0]
+    assert set_args["end_of_day"] == 3
+    assert set_args["timezone"] == 5
+    assert set_args["email"] == "good@place.ea"
+    assert user_data["metadata"]["email"] == "good@place.ea"
+    assert user_data["metadata"]["timezone"] == 5
+    assert user_data["metadata"]["end_of_day"] == 3
+
+
+def test_done_same_email(mocker):
+    mocker.patch('widt.config.send_code')
+    mocker.patch('widt.config.DB')
+    context = mocker.MagicMock()
+    user_data = {
+        "timezone_new": 5,
+        "end_of_day_new": 3,
+        "email_new": "good@place.ea",
+        "metadata": {"email": "good@place.ea"}
+    }
+    context.user_data.__contains__.side_effect = user_data.__contains__
+    context.user_data.__getitem__.side_effect = user_data.__getitem__
+    context.user_data.__delitem__.side_effect = user_data.__delitem__
+    update = mocker.MagicMock()
+    assert done(update, context) == ConversationHandler.END
+    reply_text = update.message.reply_text.call_args[0][0]
+    assert widt.config.send_code.called == False
+    assert reply_text.startswith("All set!")
+    widt.config.DB.collection.return_value.document.\
+        return_value.set.assert_called_once()
+    set_args = widt.config.DB.collection.return_value.\
+        document.return_value.set.call_args[0][0]
+    assert set_args["end_of_day"] == 3
+    assert set_args["timezone"] == 5
+    assert set_args["email"] == "good@place.ea"
+    assert user_data["metadata"]["email"] == "good@place.ea"
+    assert user_data["metadata"]["timezone"] == 5
+    assert user_data["metadata"]["end_of_day"] == 3
+
+
+def test_set_reminder_yes(mocker):
+    mocker.patch('widt.config.set_reminder')
+    mocker.patch('widt.config.DB')
+    user_data = {}
+    context = mocker.MagicMock()
+    context.args = ["yes"]
+    context.user_data.__setitem__.side_effect = user_data.__setitem__
+    update = mocker.MagicMock()
+    set_reminder(update, context)
+    reply_text = update.message.reply_text.call_args[0][0]
+    assert "will send you reminder" in reply_text
+    widt.config.DB.collection.return_value.document.\
+        return_value.set.assert_called_once()
+    set_args = widt.config.DB.collection.return_value.\
+        document.return_value.set.call_args[0][0]
+    assert set_args["reminder"] is True
+    assert user_data["reminder"] is True
+
+
+def test_set_reminder_yes(mocker):
+    mocker.patch('widt.config.set_reminder')
+    mocker.patch('widt.config.DB')
+    user_data = {}
+    context = mocker.MagicMock()
+    context.args = ["no"]
+    context.user_data.__setitem__.side_effect = user_data.__setitem__
+    update = mocker.MagicMock()
+    set_reminder(update, context)
+    reply_text = update.message.reply_text.call_args[0][0]
+    assert "will stop bugging you" in reply_text
+    widt.config.DB.collection.return_value.document.\
+        return_value.set.assert_called_once()
+    set_args = widt.config.DB.collection.return_value.\
+        document.return_value.set.call_args[0][0]
+    assert set_args["reminder"] is False
+    assert user_data["reminder"] is False
