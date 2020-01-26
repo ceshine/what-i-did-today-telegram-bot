@@ -14,10 +14,11 @@ def config(update, context):
     current = ""
     current = (
         f"Current config:\n\n" +
-        f'Timezone: {meta["timezone"] or "Empty"}\n'
-        f'End of Day: {meta["end_of_day"] or "Empty"}\n'
+        f'Timezone: {meta.get("timezone", "Empty")}\n'
+        f'End of Day: {meta.get("end_of_day", "Empty")}\n'
         f'Reminder: {"Yes" if meta.get("reminder", True) else "No"}\n'
-        f'Email: {meta["email"] or "Empty"} Verified: {meta.get("email_verified", False)}\n\n'
+        f'Email: {meta.get("email", "Empty")} '
+        f'Verified: {meta.get("email_verified", False)}\n\n'
     )
     update.message.reply_text(
         current +
