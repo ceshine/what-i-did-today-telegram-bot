@@ -2,7 +2,7 @@
 
 [![CircleCI](https://circleci.com/gh/ceshine/what-i-did-today-telegram-bot/tree/master.svg?style=svg)](https://circleci.com/gh/ceshine/what-i-did-today-telegram-bot/tree/master)
 
-![overview](images/WIDT.png | width=8882)
+<img src="images/WIDT.png" width="500" alt="overview">
 
 A telegram bot that helps you keep tabs on your daily achievements.
 
