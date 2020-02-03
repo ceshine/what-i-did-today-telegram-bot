@@ -33,7 +33,7 @@ Note: currently we archive your daily achievement automatically. In the future w
 
 Demonstrating the `/edit` command (to fix a typo):
 
-<img src="images/edit-cropped.png" width="500" alt="edit demo">
+<img src="images/edit-cropped.jpg" width="500" alt="edit demo">
 
 ### Host your own bot
 
