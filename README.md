@@ -35,15 +35,11 @@ Note: currently we archive your daily achievement automatically. In the future w
 
 The `/config` command:
 
-![config command](demo/config.gif)
+<img src="demo/config.gif" width="500" alt="config command">
 
-Writing journal:
+<img src="demo/journal.gif" width="500" alt="journal">
 
-![journal](demo/journal.gif)
-
-The `/edit` command:
-
-![edit command](demo/edit.gif)
+<img src="demo/edit.gif" width="500" alt="edit command">
 
 ### Host your own bot
 
