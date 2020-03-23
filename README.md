@@ -31,9 +31,19 @@ Note: currently we archive your daily achievement automatically. In the future w
 
 **_The above information might not be up to date. Use `/help` command to get the latest instructions_**
 
-Demonstrating the `/edit` command (to fix a typo):
+### Demo
 
-<img src="images/edit-cropped.png" width="500" alt="edit demo">
+The `/config` command:
+
+![config command](demo/config.gif)
+
+Writing journal:
+
+![journal](demo/journal.gif)
+
+The `/edit` command:
+
+![edit command](demo/edit.gif)
 
 ### Host your own bot
 
