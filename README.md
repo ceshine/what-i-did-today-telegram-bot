@@ -37,7 +37,11 @@ The `/config` command:
 
 <img src="demo/config.gif" width="500" alt="config command">
 
+Writing journal:
+
 <img src="demo/journal.gif" width="500" alt="journal">
+
+The `/edit` command:
 
 <img src="demo/edit.gif" width="500" alt="edit command">
 
