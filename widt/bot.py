@@ -13,6 +13,7 @@ from google.cloud import firestore
 from .db import DB
 from .meta import check_config_exists
 from .config import add_config_handler
+from .export import add_export_handlers
 from .journal import add_journal_handlers
 from .reporting import check_and_make_report
 from .email_verification import send_code, resend_code, verify_code
@@ -95,6 +96,8 @@ def main():
 
     add_journal_handlers(dp)
 
+    add_export_handlers(dp)
+
     # log all errors
     dp.add_error_handler(error)
 
@@ -103,12 +106,13 @@ def main():
 
     # Enable logging
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                        level=logging.DEBUG if DEBUG else logging.INFO)
+                        level=logging.INFO)
+    # level=logging.DEBUG if DEBUG else logging.INFO)
 
     if DEBUG:
         # For testing:
         from functools import partial
-        func = partial(check_and_make_report, archive=False, whitelist=[DEBUG])
+        func = partial(check_and_make_report, archive=True, whitelist=[DEBUG])
         func.__name__ = "check_and_make_report"
         job_queue.run_repeating(
             func, interval=300, first=5,

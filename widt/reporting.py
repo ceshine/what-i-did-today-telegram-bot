@@ -70,8 +70,13 @@ def _archive_journal(user_time, chat_id, archive):
     if doc.exists is False:
         return None
     if archive:
-        DB.collection("archive").document(str(chat_id)).set(
-            {user_time.strftime("%Y%m%d-%H"): doc.to_dict()},
+        DB.collection(str(chat_id)).document(
+            user_time.strftime("%Y%m")
+        ).set(
+            {
+                user_time.strftime("%Y%m%d-%H"): doc.to_dict(),
+                "month": int(user_time.strftime("%Y%m"))
+            },
             merge=True
         )
         DB.collection("live").document(str(chat_id)).delete()
