@@ -12,7 +12,8 @@ from .meta import check_config_exists
 
 
 def remove_month_field(x):
-    del x["month"]
+    if "month" in x:
+        del x["month"]
     return x
 
 
@@ -64,7 +65,7 @@ def prepare_file(entries):
         if current_date is None or row[0].date() != current_date:
             current_date = row[0].date()
             buffer.append(f"\n## {current_date.strftime('%Y-%m-%d')}\n\n")
-        buffer.append(f"+ {row[1].strip()}\n")
+        buffer.append(f"+ {row[0].strftime('%H:%M')}: {row[1].strip()}\n")
     html_str = markdown2.markdown("".join(buffer))
     return io.BytesIO(str(html_str).encode("utf8"))
 
