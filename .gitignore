@@ -104,4 +104,4 @@ docker-compose.yml
 
 .pytest_cache/
 
-keyfile.json
+*.json
